@@ -1,4 +1,5 @@
 # host_bridge
+[![Pub](https://img.shields.io/pub/v/host_bridge.svg)](https://pub.dev/packages/host_bridge)
 
 A Dart CLI and library that runs a local HTTP bridge server for **file operations** and **shell commands**. Use it from IDEs, scripts, or other tools to perform host-side file I/O and command execution (e.g., when the caller runs in a sandbox or remote environment).
 
