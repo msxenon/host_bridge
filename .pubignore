@@ -1,0 +1,18 @@
+# Build and tooling
+.dart_tool/
+.packages
+*.iml
+.DS_Store
+.fvm/
+
+# Exclude example Flutter app from published package (keeps CLI package lean)
+example/
+
+# IDE
+.idea/
+.vscode/
+
+# Local / captured data
+*.local
+.host_bridge
+http/

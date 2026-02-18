@@ -1,0 +1,37 @@
+name: host_bridge
+description: CLI and library to run a local HTTP bridge server for file operations and shell commands. Use from IDEs or scripts to perform host-side file and command execution.
+version: 1.0.1
+
+homepage: https://github.com/msxenon/host_bridge
+repository: https://github.com/msxenon/host_bridge
+issue_tracker: https://github.com/msxenon/host_bridge/issues
+
+topics:
+  - cli
+  - http
+  - file-operations
+  - automation
+
+platforms:
+  linux:
+  macos:
+  windows:
+
+executables:
+  host_bridge:
+
+environment:
+  sdk: ^3.0.0
+
+dependencies:
+  path: ^1.9.0
+  alfred: ^1.1.3
+  emojis: ^0.9.9
+  dart_mappable: ^4.4.0
+  http: ^1.6.0
+
+dev_dependencies:
+  lints: ^6.0.0
+  test: ^1.25.6
+  dart_mappable_builder: ^4.2.3
+  build_runner: ^2.11.1

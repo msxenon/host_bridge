@@ -1,0 +1,32 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Start host_bridge",
+            "type": "shell",
+            "command": "${workspaceFolder}/.vscode/start_host_bridge.sh",
+            "args": [],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "isBackground": true,
+            "problemMatcher": {
+                "owner": "host_bridge",
+                "pattern": {
+                    "regexp": "^.*(Listening on http://[^:]+:\\d+).*$"
+                },
+                "background": {
+                    "activeOnStart": true,
+                    "beginsPattern": ".",
+                    "endsPattern": "Listening on http://[^:]+:\\d+"
+                }
+            },
+            "presentation": {
+                "reveal": "always",
+                "panel": "dedicated",
+                "showReuseMessage": false,
+                "echo": true
+            }
+        }
+    ]
+}
