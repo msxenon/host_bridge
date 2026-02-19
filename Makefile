@@ -4,3 +4,9 @@ gen:
 install_local:
 	-@dart pub global deactivate host_bridge
 	@dart pub global activate --source path .
+
+pubDry:
+	@dart pub publish --dry-run
+
+pub:
+	@dart pub publish
