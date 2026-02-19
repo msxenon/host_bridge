@@ -44,6 +44,7 @@ class _CommandLineScreenState extends State<CommandLineScreen> {
   }
 
   Future<void> _killAdvancedCommand() async {
+    if (_currentPid == null) return;
     try {
       await _bridgeClient.runCommand(
         RunCommandRequestModel(command: 'kill -9 $_currentPid'),
@@ -245,7 +246,9 @@ class _CommandLineScreenState extends State<CommandLineScreen> {
                 if (_loadingCommand == _LoadingCommand.runAdvanced) ...[
                   const SizedBox(width: 12),
                   OutlinedButton.icon(
-                    onPressed: _killAdvancedCommand,
+                    onPressed: _currentPid != null
+                        ? _killAdvancedCommand
+                        : null,
                     icon: const Icon(Icons.stop),
                     label: Text(
                       _currentPid != null ? 'Kill (PID $_currentPid)' : 'Stop',

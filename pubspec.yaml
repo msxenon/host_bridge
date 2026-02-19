@@ -1,6 +1,6 @@
 name: host_bridge
 description: CLI and library to run a local HTTP bridge server for file operations and shell commands. Use from IDEs or scripts to perform host-side file and command execution.
-version: 1.0.1
+version: 1.1.0
 
 homepage: https://github.com/msxenon/host_bridge
 repository: https://github.com/msxenon/host_bridge

@@ -46,10 +46,13 @@ Stream<List<int>> _streamCommandLog({
 
   var stdoutDone = false;
   var stderrDone = false;
+  var exitEmitted = false;
 
   void maybeEmitExit(StreamController<List<int>> controller,
       {bool isKilled = false}) {
+    if (exitEmitted) return;
     if (stdoutDone && stderrDone) {
+      exitEmitted = true;
       process.exitCode.then((exitCode) {
         controller.add(_toSseBytes(
           RunAdvancedCommandResponseModelData(
@@ -61,6 +64,7 @@ Stream<List<int>> _streamCommandLog({
         controller.close();
       });
     } else if (isKilled) {
+      exitEmitted = true;
       controller.add(_toSseBytes(
         RunAdvancedCommandResponseModelData(
           exitCode: 1,
