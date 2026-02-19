@@ -18,7 +18,7 @@
                 "background": {
                     "activeOnStart": true,
                     "beginsPattern": ".",
-                    "endsPattern": "Listening on http://[^:]+:\\d+"
+                    "endsPattern": "Listening on port|Connect at http://"
                 }
             },
             "presentation": {
@@ -26,6 +26,19 @@
                 "panel": "dedicated",
                 "showReuseMessage": false,
                 "echo": true
+            }
+        },
+        {
+            "label": "Stop host_bridge",
+            "type": "shell",
+            "command": "${workspaceFolder}/.vscode/stop_host_bridge.sh",
+            "args": [],
+            "options": {
+                "cwd": "${workspaceFolder}"
+            },
+            "presentation": {
+                "reveal": "silent",
+                "panel": "shared"
             }
         }
     ]

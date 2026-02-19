@@ -9,8 +9,9 @@
             "request": "launch",
             "type": "dart",
             "preLaunchTask": "Start host_bridge",
+            "postDebugTask": "Stop host_bridge",
             "toolArgs": [
-                "--dart-define-from-file=${workspaceFolder}/.host_bridge"
+                "--dart-define-from-file=${workspaceFolder}/build/.host_bridge"
             ]
         },
     ]

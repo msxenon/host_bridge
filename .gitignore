@@ -5,4 +5,3 @@
 # FVM Version Cache
 .fvm/
 .DS_Store
-example/.host_bridge

@@ -1,9 +1,15 @@
 import 'package:flutter/material.dart';
 
+import 'package:host_bridge/host_bridge.dart';
+
 import 'file_ops_screen.dart';
 import 'command_line_screen.dart';
 
 void main() {
+  final url = const String.fromEnvironment('HOST_BRIDGE_URL', defaultValue: '');
+  if (url.isNotEmpty) {
+    HostBridgeClient(url).ping();
+  }
   runApp(const MyApp());
 }
 

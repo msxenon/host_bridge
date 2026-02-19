@@ -1,18 +1,109 @@
 import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
 import 'package:alfred/alfred.dart';
 import 'package:emojis/emojis.dart';
 import 'package:host_bridge/src/json_string_mapper.dart';
 import 'package:host_bridge/src/models/file_post_op_model.dart';
 import 'package:host_bridge/src/models/file_response_model.dart';
+import 'package:host_bridge/src/models/run_advanced_command_response_model.dart';
 import 'package:host_bridge/src/models/run_command_request_model.dart';
 import 'package:host_bridge/src/models/run_command_response_model.dart';
+import 'package:host_bridge/src/urls.dart';
 
 String _processOutputToString(dynamic output) {
   if (output == null) return '';
   if (output is String) return output;
   if (output is List<int>) return String.fromCharCodes(output);
   return output.toString();
+}
+
+List<int> _toSseBytes(RunAdvancedCommandResponseModel model) {
+  return utf8.encode('data: ${model.toJson()}\n\n');
+}
+
+Stream<List<int>> _streamCommandLog({
+  required String executable,
+  required List<String> arguments,
+  String? workingDirectory,
+  int? timeoutSeconds,
+}) async* {
+  final process = await Process.start(
+    executable,
+    arguments,
+    workingDirectory: workingDirectory,
+  );
+  final pid = process.pid;
+
+  if (timeoutSeconds != null) {
+    Future.delayed(Duration(seconds: timeoutSeconds), () {
+      final isKilled = process.kill();
+      if (!isKilled) {
+        process.kill(ProcessSignal.sigkill);
+      }
+    });
+  }
+
+  var stdoutDone = false;
+  var stderrDone = false;
+
+  void maybeEmitExit(StreamController<List<int>> controller,
+      {bool isKilled = false}) {
+    if (stdoutDone && stderrDone) {
+      process.exitCode.then((exitCode) {
+        controller.add(_toSseBytes(
+          RunAdvancedCommandResponseModelData(
+            exitCode: exitCode,
+            stdout: '',
+            pid: pid,
+          ),
+        ));
+        controller.close();
+      });
+    } else if (isKilled) {
+      controller.add(_toSseBytes(
+        RunAdvancedCommandResponseModelData(
+          exitCode: 1,
+          stdout: '',
+          pid: pid,
+        ),
+      ));
+      controller.close();
+    }
+  }
+
+  final controller = StreamController<List<int>>();
+  process.exitCode.whenComplete(() {
+    maybeEmitExit(controller, isKilled: true);
+  });
+  process.stdout.transform(utf8.decoder).listen(
+    (chunk) {
+      controller.add(_toSseBytes(
+        RunAdvancedCommandResponseModelData(
+            stdout: chunk, exitCode: 0, pid: pid),
+      ));
+    },
+    onDone: () {
+      stdoutDone = true;
+      maybeEmitExit(controller);
+    },
+    onError: (e, st) => controller.addError(e, st),
+  );
+
+  process.stderr.transform(utf8.decoder).listen(
+    (chunk) {
+      controller.add(_toSseBytes(
+        RunAdvancedCommandResponseModelError(stderr: chunk, exitCode: 1),
+      ));
+    },
+    onDone: () {
+      stderrDone = true;
+      maybeEmitExit(controller);
+    },
+    onError: (e, st) => controller.addError(e, st),
+  );
+
+  yield* controller.stream;
 }
 
 class Server {
@@ -22,7 +113,7 @@ class Server {
   Future<void> run() async {
     _app.all('*', cors(origin: '*'));
 
-    _app.post('file_op', (req, res) async {
+    _app.post(Urls.fileOp, (req, res) async {
       final fileOpContext = FilePostOpModelMapper.fromMap(
         (await req.bodyAsJsonMap),
       );
@@ -74,16 +165,23 @@ class Server {
           'Host Bridge is running! Post to /file_op for file operations, /run_command to run terminal commands.',
     );
 
-    _app.get('/ping', (req, res) => 'pong');
+    _app.get(Urls.ping, (req, res) {
+      final sessionFile = Platform.environment['HOST_BRIDGE_SESSION_FILE'];
+      if (sessionFile != null && sessionFile.isNotEmpty) {
+        try {
+          File(sessionFile).writeAsStringSync('');
+        } catch (_) {}
+      }
+      return 'pong';
+    });
 
-    _app.post('/run_command', (req, res) async {
+    _app.post(Urls.runCommand, (req, res) async {
       final body = RunCommandRequestModelMapper.fromMap(
         await req.bodyAsJsonMap,
       );
       final executable = Platform.isWindows ? 'cmd' : '/bin/sh';
-      final arguments = Platform.isWindows
-          ? ['/c', body.command]
-          : ['-c', body.command];
+      final arguments =
+          Platform.isWindows ? ['/c', body.command] : ['-c', body.command];
       var runFuture = Process.run(
         executable,
         arguments,
@@ -106,7 +204,32 @@ class Server {
       return response.toJson();
     });
 
+    _app.post(Urls.runCommandGetStream, (req, res) async {
+      final body = RunCommandRequestModelMapper.fromMap(
+        await req.bodyAsJsonMap,
+      );
+      final executable = Platform.isWindows ? 'cmd' : '/bin/sh';
+      final arguments =
+          Platform.isWindows ? ['/c', body.command] : ['-c', body.command];
+
+      res.headers.contentType = ContentType('text', 'event-stream');
+      res.headers.set('Cache-Control', 'no-cache');
+      res.headers.set('Connection', 'keep-alive');
+      res.bufferOutput = false;
+
+      return _streamCommandLog(
+        executable: executable,
+        arguments: arguments,
+        workingDirectory: body.workingDirectory,
+        timeoutSeconds: body.timeoutSeconds,
+      );
+    });
+
     await _app.listen(0);
+    final port = _app.server!.port;
+    // Print immediately (flush) so start_host_bridge.sh sees it when stdout is redirected
+    stdout.writeln('${Emojis.compass} Listening on port $port');
+    stdout.flush();
     String? localIp;
     for (var interface in await NetworkInterface.list()) {
       for (var addr in interface.addresses) {
@@ -117,8 +240,7 @@ class Server {
       }
       if (localIp != null) break;
     }
-    print(
-      '${Emojis.compass} Listening on http://${localIp!}:${_app.server!.port}',
-    );
+    stdout.writeln('Connect at http://${localIp ?? '127.0.0.1'}:$port');
+    stdout.flush();
   }
 }
